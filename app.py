@@ -16,10 +16,26 @@ from lxml import etree
 import pygraphviz as pdv
 from plotly_visualize import visualize_graph_3d
 
-outputFile = sys.argv[1]
-inputFilename = sys.argv[2]
+projectDir = sys.argv[1]
 
-G = pdv.AGraph(inputFilename)
+Gfinal = pdv.AGraph(projectDir + "/graph/final.dot")
+Gtotal = pdv.AGraph(projectDir + "/graph/total.dot")
+
+ids = pd.read_csv(projectDir + "/graph/logs/all.csv", parse_dates=True, index_col=0)
+final = pd.read_csv(projectDir + "/graph/logs/final.csv", parse_dates=True)
+total = pd.read_csv(projectDir + "/graph/logs/total.csv", parse_dates=True)
+
+ids['labels'] = ids.Image1
+for idx, row in ids.iterrows():
+    ids.at[idx,'labels'] = row.Image1 +' / '+ row.Image2 +' / '+ row.Image3
+
+ids = ids.sort_values(by=['Id'])
+
+
+print(ids.head())
+print(final.head())
+
+
 #print(G.get_subgraph("triplets").nodes())
 #print(G.get_subgraph("views").nodes())
 
@@ -29,8 +45,8 @@ G = pdv.AGraph(inputFilename)
 #node_sizes = get_node_sizes(graph)
 #edge_weights = get_edge_weights(G)
 #filename= "outputs/"+outputFile+".html"
-filename=outputFile
-visualize_graph_3d(G, filename=filename,  title="3D visualization")
+visualize_graph_3d(Gfinal, ids, final, filename="final.html",  title="3D visualization")
+visualize_graph_3d(Gtotal, ids, total, filename="total.html",  title="v", cost=True)
 
 
 #if __name__ == '__main__':

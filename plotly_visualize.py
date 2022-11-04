@@ -1,8 +1,11 @@
 from os import name
+from colour import color_scale
+from networkx import link_analysis
 from numpy import double
 from plotly.graph_objs import *
 import plotly.graph_objects as go
 from plotly.offline import plot as offpy
+import numpy as np
 
 def getRGBfromI(RGBint):
     blue =  RGBint & 255
@@ -41,16 +44,20 @@ def get_node_labels(G):
 
 allpos = {}
 
-def visualize_graph_layer(G, fig, color, name="", offset = [0,0,0], scale=[1,1,1]):
+offsetbar = [0.]
+
+def visualize_graph_layer(G, fig, color, weight=[], text=[], name="", offset = [0,0,0],
+                          scale=[1,1,1],colorscale="Viridis", edge=True):
     positions = get_node_pos(G, offset=offset, scale=scale)
     node_size = len(G.nodes())
     node_x = [0]*node_size
     node_y = [0]*node_size
     node_z = [0]*node_size
 
-    node_colors = [''] * node_size
+    node_colors = [0] * node_size
     #nodesc = {}
     for i, node in enumerate(G.nodes()):
+        print(node)
         x, y, z = positions[node]
         node_x[i], node_y[i], node_z[i] = x, y, z
         #c = getRGBfromI(int(node))
@@ -63,24 +70,30 @@ def visualize_graph_layer(G, fig, color, name="", offset = [0,0,0], scale=[1,1,1
                            y=node_y,
                            z=node_z,
                            mode='markers',
-                           marker=dict(symbol='cross',
-                                       size=10,
-                                       color=color,
-                                       colorscale='Viridis',  # 'Viridis',
-                                       #colorbar=dict(
-                                       #    thickness=15,
-                                       #    title='Node Connections',
-                                       #    xanchor='left',
-                                       #    titleside='right'
-                                       #),
-                                       #line=Line(
-                                       #    color='rgb(50,50,50)', width=0.5)
+                           marker=dict(symbol='circle',
+                                       size=5,
+                                       #color=color,
+                                       color=weight,
+                                       colorscale=colorscale,  # 'Viridis',
+                                       colorbar=dict(
+                                           thickness=15,
+                                           title='Residue',
+                                           xanchor='left',
+                                           titleside='right',
+                                           x=offsetbar[0]
+                                       ),
+                                       line=Line(
+                                           color='rgb(50,50,50)', width=0.5)
                                        ),
                            name=name,
-                           text=get_node_labels(G),
-                           #hoverinfo='text'
+                           text=text,
+                           hoverinfo='text'
                            )
     fig.add_trace(node_trace)
+    offsetbar[0] += 0.02
+
+    if not edge:
+        return
 
     edge_size = len(G.edges())
     edge_x = [0, 0, None]*edge_size
@@ -133,18 +146,56 @@ def visualize_graph_interlayer(G, fig, color, name="", offsetZ = 0):
                        )
     fig.add_trace(edge_trace)
 
-def visualize_graph_3d(G, filename, title="3d"):
+def genHoverTextT(G, ids, final, cost=False):
+    labels = get_node_labels(G)
+    nodesize = len(G.nodes())
+    texts = [''] * nodesize
+    for i in range(nodesize):
+        name = ids.at[int(G.nodes()[i]),'labels']
+        #name = G.nodes()[i]
+        texts[i] += "Name: " + name + "<br>"
+        texts[i] += "Id: "+ G.nodes()[i] + "<br>"
+        texts[i] += "R_moy: " + str(final.iloc[i].Residue) + "<br>"
+        if cost:
+            texts[i] += "R_med: " + str(final.iloc[i].Cost) + "<br>"
+    return texts
+
+def genHoverText(G, ids, final):
+    labels = get_node_labels(G)
+    nodesize = len(G.nodes())
+    texts = [''] * nodesize
+    for i in range(nodesize):
+        texts[i] += "Name: "+ G.nodes()[i] + "<br>"
+        texts[i] += "D: " + str(labels[i])
+    return texts
+
+def visualize_graph_3d(G, ids, final, filename, title="3d", cost=False):
     Gt = G.get_subgraph("triplets")
     Gv = G.get_subgraph("views")
     Ge = G.get_subgraph("triplets_views")
 
     fig = go.Figure()
+    if cost:
+        weight = final["Cost"]
+    else:
+        weight = final["Residue"]
+    weight += [1]*len(weight)
+    weight = np.log10(weight)
 
+    visualize_graph_layer(Gt, fig, weight=weight,
+                          text=genHoverTextT(Gt, ids, final, cost),
+                          color=f'rgb(0, 255, 0)', colorscale="Viridis", name="triplets",
+                          offset=[0, 0, 0], edge=False)
 
-    visualize_graph_layer(Gt, fig, color=f'rgb(0, 255, 0)',name="triplets",
-                          offset=[0,0,0])
+    labels = get_node_labels(Gv)
+    w = []
+    for i in range(len(labels)):
+        w.append(int(labels[i]))
 
-    visualize_graph_layer(Gv, fig, color=f'rgb(255, 0, 0)', name="views")
+    visualize_graph_layer(Gv, fig, weight=w,
+                          text=genHoverText(Gv, ids, final),
+                          color=f'rgb(255, 0, 0)', colorscale="inferno",
+                          name="views")
 
     visualize_graph_interlayer(Ge, fig, color=f'rgb(0, 0, 255)',
                                name="inter")
@@ -179,7 +230,7 @@ def visualize_graph_3d(G, filename, title="3d"):
             aspectratio=dict(x=1, y=1, z=1)
         ),
         margin=Margin(
-            t=1
+            t=10
         ),
         hovermode='closest',
         annotations=Annotations([
@@ -189,7 +240,7 @@ def visualize_graph_3d(G, filename, title="3d"):
                 xref='paper',
                 yref='paper',
                 x=0,
-                y=0.1,
+                y=10,
                 xanchor='left',
                 yanchor='bottom',
             )
