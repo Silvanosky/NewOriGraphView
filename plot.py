@@ -1,11 +1,13 @@
 #!/bin/python
 import pandas as pd
+import numpy as np
 #import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objects as go
 import csv
 import sys, os
 from plotly.offline import plot as offpy
+import glob
 
 pd.options.plotting.backend = "plotly"
 
@@ -66,6 +68,29 @@ def loadDistN(N, i, fig):
     #fig = data["Distance"].plot.hist(bins=20)
     #fig.show()
 
+def histogram(data, key, R):
+    cat0 = data[data["Category"] == 0]
+    cat1 = data[data["Category"] == 1]
+    cat2 = data[data["Category"] == 2]
+
+    c0y, c0x = np.histogram(cat0[key], bins=R)
+    c1y, c1x = np.histogram(cat1[key], bins=R)
+    fg = go.Figure()
+    fg.add_trace(go.Histogram(x=data[key],
+                        name='Sum',
+                        marker_color=f'rgb(128, 128, 128)'))
+
+    fg.add_trace(go.Histogram(x=cat0[key],
+                    name='Cat0 - bad',
+                    marker_color=f'rgb(255, 0, 0)'))
+    fg.add_trace(go.Scatter(x=c0x, y=c0y))
+
+    fg.add_trace(go.Histogram(x=cat1[key],
+                    name='Cat1 - good',
+                    marker_color=f'rgb(0, 255, 0)'))
+    fg.add_trace(go.Scatter(x=c1x, y=c1y))
+    offpy(fg, filename="report-"+key +".html", auto_open=True, show_link=True)
+
 
 #TODO Histogram pour la meme distance le residue de chaque triplet, cumulé ou
 # ou pas
@@ -104,11 +129,6 @@ print(final.head())
 
 # Create traces
 fig = go.Figure()
-
-cat0 = total[total["Category"] == 0]
-cat1 = total[total["Category"] == 1]
-cat2 = total[total["Category"] == 2]
-
 fig.add_trace(go.Scatter(x=total['x1'], y=total['Residue'],
                     mode='lines+markers',
                     name='Residue',
@@ -123,36 +143,55 @@ fig.add_trace(go.Scatter(x=final['x1'], y=final['Residue'],
 
 fig.update_yaxes(type="log")
 
-fag = go.Figure()
-fag.add_trace(go.Histogram(x=cat0['Residue'],
-                    name='Cat0 - bad',
-                    marker_color=f'rgb(255, 0, 0)'))
+data = loadTriplets()
 
-fag.add_trace(go.Histogram(x=cat1['Residue'],
-                    name='Cat1 - good',
-                    marker_color=f'rgb(0, 255, 0)'))
-fag.update_yaxes(type="log")
-offpy(fag, filename="reporta.html", auto_open=True, show_link=True)
+histogram(total, "Residue", 150)
+histogram(total, "Cost", 150)
+histogram(total, "Score", 38)
 
-fag1 = go.Figure()
-fag1.add_trace(go.Histogram(x=cat0['Cost'],
-                    name='Cat0 - bad',
-                    marker_color=f'rgb(255, 0, 0)'))
+#fag = go.Figure()
+#fag.add_trace(go.Histogram(x=total['Residue'],
+#                    name='Sum',
+#                    marker_color=f'rgb(128, 128, 128)'))
 
-fag1.add_trace(go.Histogram(x=cat1['Cost'],
-                    name='Cat1 - good',
-                    marker_color=f'rgb(0, 255, 0)'))
-offpy(fag1, filename="reporta1.html", auto_open=True, show_link=True)
+#fag.add_trace(go.Histogram(x=cat0['Residue'],
+#                    name='Cat0 - bad',
+#                    marker_color=f'rgb(255, 0, 0)'))
 
-fag2 = go.Figure()
-fag2.add_trace(go.Histogram(x=cat0['Score'],
-                    name='Cat0 - bad',
-                    marker_color=f'rgb(255, 0, 0)'))
+#fag.add_trace(go.Histogram(x=cat1['Residue'],
+#                    name='Cat1 - good',
+#                    marker_color=f'rgb(0, 255, 0)'))
+#fag.update_yaxes(type="log")
+#offpy(fag, filename="reporta.html", auto_open=True, show_link=True)
 
-fag2.add_trace(go.Histogram(x=cat1['Score'],
-                    name='Cat1 - good',
-                    marker_color=f'rgb(0, 255, 0)'))
-offpy(fag2, filename="reporta2.html", auto_open=True, show_link=True)
+#fag1 = go.Figure()
+#fag1.add_trace(go.Histogram(x=total['Cost'],
+#                    name='Sum',
+#                    marker_color=f'rgb(128, 128, 128)'))
+
+
+#fag1.add_trace(go.Histogram(x=cat0['Cost'],
+#                    name='Cat0 - bad',
+#                    marker_color=f'rgb(255, 0, 0)'))
+
+#fag1.add_trace(go.Histogram(x=cat1['Cost'],
+#                    name='Cat1 - good',
+#                    marker_color=f'rgb(0, 255, 0)'))
+#offpy(fag1, filename="reporta1.html", auto_open=True, show_link=True)
+
+#fag2 = go.Figure()
+#fag2.add_trace(go.Histogram(x=total['Score'],
+#                    name='Sum',
+#                    marker_color=f'rgb(128, 128, 128)'))
+
+#fag2.add_trace(go.Histogram(x=cat0['Score'],
+#                    name='Cat0 - bad',
+#                    marker_color=f'rgb(255, 0, 0)'))
+
+#fag2.add_trace(go.Histogram(x=cat1['Score'],
+#                    name='Cat1 - good',
+#                    marker_color=f'rgb(0, 255, 0)'))
+#offpy(fag2, filename="reporta2.html", auto_open=True, show_link=True)
 
 
 
