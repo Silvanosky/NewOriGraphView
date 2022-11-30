@@ -30,12 +30,12 @@ def loadRes(i, fig):
     if not os.path.exists(file):
         return
     data = pd.read_csv(file, parse_dates=True)
-    data = data.sort_values(by=['Score']).reset_index(drop=True)
-    fig.add_trace(go.Scatter(x=data.index, y=data['Score'],
+    data = data.sort_values(by=['Residue']).reset_index(drop=True)
+    fig.add_trace(go.Scatter(x=data.index, y=data['Residue'],
                     mode='lines+markers',
                     name=str(i)))
 
-def loadDist(i, fig):
+def loadDist(i, fig, arg):
     file = curDir + "/triplets/" + str(i) + ".csv"
     if not os.path.exists(file):
         return
@@ -43,12 +43,13 @@ def loadDist(i, fig):
     data = data.sort_values(by=['Distance']).reset_index(drop=True)
     #fig.add_trace(go.Scatter3d(x=data.index, y=data.Residue, z=data.Distance,
     #                           mode='markers'))
-    fig.add_trace(go.Scatter(x=data.Distance, y=data.Residue,
-                               mode='markers',
-                             name=str(i)))
+    #fig.add_trace(go.Scatter(x=data.Distance, y=data.Residue,
+    #                           mode='markers',
+    #                         name=str(i)))
 
     #fig = data["Distance"].plot.hist(bins=20)
     #fig.show()
+    return pd.concat([arg, data], ignore_index=True)
 
 def loadDistN(N, i, fig):
     file = curDir + "/triplets/" + str(i) + ".csv"
@@ -88,13 +89,14 @@ def histogram(data, key, R):
     fg.add_trace(go.Histogram(x=cat1[key],
                     name='Cat1 - good',
                     marker_color=f'rgb(0, 255, 0)'))
+
     fg.add_trace(go.Scatter(x=c1x, y=c1y))
     offpy(fg, filename="report-"+key +".html", auto_open=True, show_link=True)
 
 
 #TODO Histogram pour la meme distance le residue de chaque triplet, cumulé ou
 # ou pas
-ids = pd.read_csv(curDir + "/triplets/all.csv", parse_dates=True, index_col=0)
+ids = pd.read_csv(curDir + "/all.csv", parse_dates=True, index_col=0)
 
 ids['labels'] = ids.Image1
 for idx, row in ids.iterrows():
@@ -102,7 +104,7 @@ for idx, row in ids.iterrows():
 
 total = pd.read_csv(curDir + "/total.csv", parse_dates=True)
 final = pd.read_csv(curDir + "/final.csv", parse_dates=True)
-total = total.sort_values(by=['Residue']).reset_index(drop=True)
+total = total.sort_values(by=['Score']).reset_index(drop=True)
 total['x1'] = total.index
 #total = total.sort_values(by=['Cost']).reset_index(drop=True)
 total['x2'] = total.index
@@ -129,24 +131,38 @@ print(final.head())
 
 # Create traces
 fig = go.Figure()
-fig.add_trace(go.Scatter(x=total['x1'], y=total['Residue'],
+fig.add_trace(go.Histogram(x=total['Residue'],
+                    name='Residue'))
+fig.add_trace(go.Histogram(x=total['ResidueMedian'],
+                    name='ResidueMedian'))
+#fig.add_trace(go.Scatter(x=final['x1'], y=final['Residue'],
+#                    mode='markers', name='Final',
+#                    text=ids['labels']))
+#fig.add_trace(go.Scatter(x=final['x1'], y=final['ResidueMedian'],
+#                    mode='markers', name='Final',
+#                    text=ids['labels']))
+offpy(fig, filename="report.html", auto_open=True, show_link=True)
+
+figb = go.Figure()
+figb.add_trace(go.Scatter(x=total['x2'], y=total['Score'],
                     mode='lines+markers',
-                    name='Residue',
+                    name='Score',
                     text=ids['labels']))
-fig.add_trace(go.Scatter(x=total['x2'], y=total['Cost'],
-                    mode='lines+markers',
-                    name='Cost',
-                    text=ids['labels']))
-fig.add_trace(go.Scatter(x=final['x1'], y=final['Residue'],
-                    mode='markers', name='Final',
+figb.add_trace(go.Scatter(x=total['x2'], y=total['ScoreMedian'],
+                    mode='markers',
+                    name='ScoreMedian',
                     text=ids['labels']))
 
-fig.update_yaxes(type="log")
+figb.add_trace(go.Scatter(x=final['x1'], y=final['Score'],
+                    mode='markers',
+                    name='Final',
+                    text=ids['labels']))
+offpy(figb, filename="reportb.html", auto_open=True, show_link=True)
 
-data = loadTriplets()
+#data = loadTriplets()
 
 histogram(total, "Residue", 150)
-histogram(total, "Cost", 150)
+#histogram(total, "Cost", 150)
 histogram(total, "Score", 38)
 
 #fag = go.Figure()
@@ -205,7 +221,7 @@ layout = {
       "title": "Distance"
     },
     "zaxis": {
-      "type": "log",
+#      "type": "log",
       "title": "Residue (px)"
     }
   },
@@ -222,6 +238,7 @@ layout = {
 
 fig2 = go.Figure()
 fig3 = go.Figure(layout=layout)
+d = pd.DataFrame(columns=['Residue', 'Distance'])
 if mode == "all":
 #    plt.figure(num="Residue")
     for i in range(numberIter):
@@ -232,7 +249,7 @@ if mode == "all":
         if distN > 0:
             loadDistN(distN, i, fig3)
         else:
-            loadDist(i, fig3)
+            d = loadDist(i, fig3, d)
 #    plt.show(block=False)
 elif mode == "one":
 #    plt.figure(num="Residue")
@@ -242,14 +259,13 @@ elif mode == "one":
     if distN > 0:
         loadDistN(distN, numberIter, fig3)
     else:
-        loadDist(numberIter, fig3)
+        d = loadDist(numberIter, fig3, d)
 #    plt.show(block=False)
+fig3.add_trace(go.Box(x=d.Distance, y=d.Residue))
 
-fig2.update_yaxes(type="log")
-fig3.update_yaxes(type="log")
-
-offpy(fig, filename="report.html", auto_open=True, show_link=True)
+#fig2.update_yaxes(type="log")
 offpy(fig2, filename="report1.html", auto_open=True, show_link=True)
+#fig3.update_yaxes(type="log")
 offpy(fig3, filename="report2.html", auto_open=True, show_link=True)
 
 #pause()

@@ -34,18 +34,55 @@ def getTripletCat(cat):
             r[key] = t
     return r
 
+def histogram(data, key):
+    cat0 = data[data["Category"] == 0]
+    cat1 = data[data["Category"] == 1]
+    cat2 = data[data["Category"] == 2]
+
+    fg = go.Figure()
+    fg.add_trace(go.Histogram(x=data[key],
+                        name='Sum',
+                        marker_color=f'rgb(128, 128, 128)'))
+
+    fg.add_trace(go.Histogram(x=cat0[key],
+                    name='Cat0 - bad',
+                    marker_color=f'rgb(255, 0, 0)'))
+
+    fg.add_trace(go.Histogram(x=cat1[key],
+                    name='Cat1 - good',
+                    marker_color=f'rgb(0, 255, 0)'))
+    return fg
 
 app.layout = html.Div([
     html.H4('Score triplets computation'),
-    dcc.Graph(id="graph"),
-    html.P("R0:"),
-    dcc.Slider(id="R0", min=0, max=1000, step=10, value=100,
-               marks=None,
-               tooltip={"placement": "bottom", "always_visible": True}),
-    dcc.Slider(id="D0", min=0, max=12, step=1, value=5,
-               marks=None,
-               tooltip={"placement": "bottom", "always_visible": True}),
-])
+    html.Div([
+        html.H1(children='Residue'),
+        dcc.Graph(
+            id='Residue',
+            figure=histogram(total, "Residue")
+        ),
+    ]),
+    html.Div([
+        html.H1(children='ResidueMedian'),
+        dcc.Graph(
+            id='ResidueMedian',
+            figure=histogram(total, "ResidueMedian")
+        ),
+    ]),
+
+    html.Div([
+        html.H4(children='R/(R+D+R0)'),
+        dcc.Graph(id="graph"),
+        html.P("R0:"),
+        dcc.Slider(id="R0", min=0, max=500, step=1, value=100,
+                   marks=None,
+                   tooltip={"placement": "bottom", "always_visible": True}),
+        dcc.Slider(id="D0", min=0, max=12, step=1, value=5,
+                   marks=None,
+                   tooltip={"placement": "bottom", "always_visible": True}),
+
+    ])
+   ])
 
 
 def computeScoreTriplet(key, d, r0, d0):

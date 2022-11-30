@@ -47,7 +47,7 @@ allpos = {}
 offsetbar = [0.]
 
 def visualize_graph_layer(G, fig, color, weight=[], text=[], name="", offset = [0,0,0],
-                          scale=[1,1,1],colorscale="Viridis", edge=True):
+                          scale=[1,1,1], colorscale="Viridis", size=5, symbol = "circle", edge=True):
     positions = get_node_pos(G, offset=offset, scale=scale)
     node_size = len(G.nodes())
     node_x = [0]*node_size
@@ -70,8 +70,8 @@ def visualize_graph_layer(G, fig, color, weight=[], text=[], name="", offset = [
                            y=node_y,
                            z=node_z,
                            mode='markers',
-                           marker=dict(symbol='circle',
-                                       size=5,
+                           marker=dict(symbol=symbol,
+                                       size=size,
                                        #color=color,
                                        color=weight,
                                        colorscale=colorscale,  # 'Viridis',
@@ -156,8 +156,9 @@ def genHoverTextT(G, ids, final, cost=False):
         texts[i] += "Name: " + name + "<br>"
         texts[i] += "Id: "+ G.nodes()[i] + "<br>"
         texts[i] += "R_moy: " + str(final.iloc[i].Residue) + "<br>"
-        if cost:
-            texts[i] += "R_med: " + str(final.iloc[i].Cost) + "<br>"
+        texts[i] += "R_med: " + str(final.iloc[i].ResidueMedian) + "<br>"
+        texts[i] += "R_score: " + str(final.iloc[i].Score) + "<br>"
+
     return texts
 
 def genHoverText(G, ids, final):
@@ -176,16 +177,18 @@ def visualize_graph_3d(G, ids, final, filename, title="3d", cost=False):
 
     fig = go.Figure()
     if cost:
-        weight = final["Cost"]
+        weight = final["ResidueMedian"]
     else:
         weight = final["Residue"]
-    weight += [1]*len(weight)
-    weight = np.log10(weight)
+    weight = final["Score"]
+    #weight += [1]*len(weight)
+    #weight = np.log10(weight)
 
     visualize_graph_layer(Gt, fig, weight=weight,
                           text=genHoverTextT(Gt, ids, final, cost),
                           color=f'rgb(0, 255, 0)', colorscale="Viridis", name="triplets",
-                          offset=[0, 0, 0], edge=False)
+                          size=3,
+                          offset=[0, 0, 0], symbol="square", edge=False)
 
     labels = get_node_labels(Gv)
     w = []
@@ -195,6 +198,7 @@ def visualize_graph_3d(G, ids, final, filename, title="3d", cost=False):
     visualize_graph_layer(Gv, fig, weight=w,
                           text=genHoverText(Gv, ids, final),
                           color=f'rgb(255, 0, 0)', colorscale="inferno",
+                          symbol="circle",
                           name="views")
 
     visualize_graph_interlayer(Ge, fig, color=f'rgb(0, 0, 255)',
