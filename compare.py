@@ -5,10 +5,46 @@ import xml.etree.ElementTree as ET
 from lxml import etree
 import glob
 import numpy as np
+from pathlib import Path
+import shutil
+import random
 
 nArg = len(sys.argv)
 refDir = sys.argv[1]
 testDir = sys.argv[2]
+
+path = Path(refDir)
+workingDir = path.parent.absolute()
+print(workingDir)
+
+basculeDir = workingDir / "Ori-TMPBascule"
+
+#def createBasculeOri():
+#    for f in glob.glob(refDir + "/AutoCal*"):
+#        shutil.copy(f, workingDir / "Ori-TMPBascule")
+#    for f in glob.glob(refDir + "/Orientation*"):
+#        shutil.copy(f, workingDir / "Ori-TMPBascule")
+#    return
+#
+#    ori = glob.glob(refDir + "/Orientation*")
+#    shutil.copy(ori[0],workingDir / "Ori-TMPBascule")
+#    shutil.copy(ori[-1], workingDir/ "Ori-TMPBascule")
+
+#shutil.rmtree(basculeDir, ignore_errors=True)
+#os.mkdir(basculeDir)
+#createBasculeOri()
+
+
+cwd = os.getcwd()
+os.chdir(workingDir)
+os.system("mm3d Morito \""+os.path.split(refDir)[1] +"/Orientation-.*.xml\" \"" + \
+          os.path.split(testDir)[1] + "/Orientation-.*.xml\" Basculed")
+
+os.system("mm3d CmpOri \".*.tif\" \""+os.path.split(refDir)[1] + "/\" \"Ori-Basculed/\"")
+
+os.chdir(cwd)
+
+finaltestDir = workingDir / "Ori-Basculed"
 
 def loadOrientation(path):
     views = {}
@@ -34,20 +70,18 @@ def loadOrientation(path):
             a.append(l)
         img["angle"] = a
         views[str(imagename)] = img
-    print(views)
+    #print(views)
     return views
 
 ref = loadOrientation(refDir)
-test = loadOrientation(testDir)
+test = loadOrientation(finaltestDir.as_posix())
 
 for keys in test.keys():
     if not keys in ref.keys():
         print("Missing view in ref: " + str(keys))
-print("ok")
+        quit(1)
 
-errors = 0
-n = 0
-
+errors = []
 for key in test.keys():
     pos_ref = np.array(ref[key]["position"])
     pos_test = np.array(test[key]["position"])
@@ -56,10 +90,12 @@ for key in test.keys():
     diff = pos_ref - pos_test
     dist = np.linalg.norm(diff)
     # printing Euclidean distance
-    print(str(dist) + " - " + str(diff))
-    errors += dist
-    n += 1
-print ("Mean error : " + str(errors/n))
+    #print(key + " - " + str(dist) + " - " + str(diff))
+    errors.append(dist)
+print ("Error : " + str(np.mean(errors)) + " - " + str(np.var(errors)))
+
+# Faire la bascule avec morito
+
 
 
 
