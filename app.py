@@ -19,11 +19,11 @@ from plotly_visualize import visualize_graph_3d
 projectDir = sys.argv[1]
 
 Gfinal = pdv.AGraph(projectDir + "/final.dot")
-Gtotal = pdv.AGraph(projectDir + "/total.dot")
+#Gtotal = pdv.AGraph(projectDir + "/total.dot")
 
 ids = pd.read_csv(projectDir + "/logs/all.csv", parse_dates=True, index_col=0)
 final = pd.read_csv(projectDir + "/logs/final.csv", parse_dates=True)
-total = pd.read_csv(projectDir + "/logs/total.csv", parse_dates=True)
+#total = pd.read_csv(projectDir + "/logs/total.csv", parse_dates=True)
 
 ids['labels'] = ids.Image1
 for idx, row in ids.iterrows():

@@ -8,6 +8,21 @@ import numpy as np
 from pathlib import Path
 import shutil
 import random
+import subprocess
+from parse import compile
+import time
+from concurrent.futures import ThreadPoolExecutor
+from multiprocessing import Process
+from multiprocessing import Pool, TimeoutError
+import plotly.express as px
+import plotly.graph_objects as go
+import csv
+import sys, os
+from plotly.offline import plot as offpy
+import glob
+
+
+from basculed import *
 
 nArg = len(sys.argv)
 refDir = sys.argv[1]
@@ -17,7 +32,56 @@ path = Path(refDir)
 workingDir = path.parent.absolute()
 print(workingDir)
 
-basculeDir = workingDir / "Ori-TMPBascule"
+def f(t):
+    start = time.time()
+    micmacBascule(workingDir, refDir, t)
+    center, angles = micmacCmp(workingDir, refDir, t)
+    end = time.time()
+    #print("Center : " + str(center) + " Angle : " + str(angles) \
+    #        + " in " + str(end - start))
+    return center, angles
+
+
+print(testDir)
+if testDir.find('*') != -1:
+    directories = glob.glob(testDir)
+    csv_log = open("differences.csv", "w")
+    results_center = []
+    results_angles = []
+    with Pool(processes=10) as pool:
+        multiple_results = []
+        for t in directories:
+            if not "Basculed" in t:
+                multiple_results.append((pool.apply_async(f, (t, )), t))
+        for res, d in multiple_results:
+            center, angles = res.get(timeout=10000)
+            results_center.append(center)
+            results_angles.append(angles)
+            csv_log.write(d + "," + str(center) + "," + str(angles))
+
+    print("-------------------------------")
+    print("         Results :          ")
+    print(results_center)
+    print(results_angles)
+    print("---")
+    print(str(np.mean(results_center)) + " - " + str(np.std(results_center)) + " - " + str(np.var(results_center)))
+    print(str(np.mean(results_angles)) + " - " + str(np.std(results_angles)) + " - " + str(np.var(results_angles)))
+    print("-------------------------------")
+
+    fg = go.Figure()
+    fg.add_trace(go.Histogram(x=results_center,
+                        name='Centers'))
+    fg.add_trace(go.Histogram(x=results_angles,
+                        name='Angles'))
+    offpy(fg, filename="triplets.html", auto_open=True, show_link=True)
+
+    csv_log.close()
+else:
+    micmacBascule(workingDir, refDir, testDir)
+    micmacCmp(workingDir, refDir, testDir)
+
+
+#basculeDir = workingDir / "Ori-TMPBascule"
 
 #def createBasculeOri():
 #    for f in glob.glob(refDir + "/AutoCal*"):
@@ -35,14 +99,7 @@ basculeDir = workingDir / "Ori-TMPBascule"
 #createBasculeOri()
 
 
-cwd = os.getcwd()
-os.chdir(workingDir)
-os.system("mm3d Morito \""+os.path.split(refDir)[1] +"/Orientation-.*.xml\" \"" + \
-          os.path.split(testDir)[1] + "/Orientation-.*.xml\" Basculed")
-
-os.system("mm3d CmpOri \".*.tif\" \""+os.path.split(refDir)[1] + "/\" \"Ori-Basculed/\"")
-
-os.chdir(cwd)
+quit(0)
 
 finaltestDir = workingDir / "Ori-Basculed"
 
