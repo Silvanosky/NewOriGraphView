@@ -131,10 +131,14 @@ print(final.head())
 
 # Create traces
 fig = go.Figure()
+fig.update_layout(xaxis2= {'anchor': 'y', 'overlaying': 'x', 'side': 'top'});
 fig.add_trace(go.Histogram(x=total['Residue'],
                     name='Residue'))
 fig.add_trace(go.Histogram(x=total['ResidueMedian'],
                     name='ResidueMedian'))
+fig.add_trace(go.Histogram(x=total['Score'],
+                    name='Score'))
+fig.data[2].update(xaxis='x2')
 #fig.add_trace(go.Scatter(x=final['x1'], y=final['Residue'],
 #                    mode='markers', name='Final',
 #                    text=ids['labels']))

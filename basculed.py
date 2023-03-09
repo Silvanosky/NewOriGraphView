@@ -14,11 +14,12 @@ from parse import compile
 def micmacBascule(wDir, rDir, tDir, Debug=False):
     cwd = os.getcwd()
     os.chdir(wDir)
-    cmd_morito = ["mm3d", "Morito", os.path.split(rDir)[1]
-                  +"/Orientation-.*.xml", "" + \
-            os.path.split(tDir)[1] + "/Orientation-.*.xml", \
-                  os.path.split(tDir)[1].removeprefix("Ori-") + "Basculed"]
-    #print(cmd_morito)
+    cmd_morito = ["mm3d", "Morito",\
+                os.path.split(rDir)[1] + "/Orientation-.*.xml",
+                os.path.split(tDir)[1] + "/Orientation-.*.xml", \
+                os.path.split(tDir)[1].removeprefix("Ori-") + "Basculed", \
+                "FUO=2"]
+    print(cmd_morito)
 
     ex = subprocess.Popen(cmd_morito, stdout=subprocess.PIPE, \
                                  stderr=subprocess.PIPE)

@@ -31,7 +31,7 @@ testDir = sys.argv[2]
 path = Path(refDir)
 workingDir = path.parent.absolute()
 print(workingDir)
-
+# Morito utiliser que 3 images au lieu de toutes les images
 def f(t):
     start = time.time()
     micmacBascule(workingDir, refDir, t)

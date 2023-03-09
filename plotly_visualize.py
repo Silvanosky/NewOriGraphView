@@ -27,7 +27,7 @@ def get_node_pos(G, offset = [0,0,0], scale=[1,1,1]):
         pos[node][0] += offset[0]
         pos[node][1] += offset[1]
         pos[node][2] += offset[2]
-
+        print(scale)
         pos[node][0] *= scale[0]
         pos[node][1] *= scale[1]
         pos[node][2] *= scale[2]
@@ -75,13 +75,13 @@ def visualize_graph_layer(G, fig, color, weight=[], text=[], name="", offset = [
                                        #color=color,
                                        color=weight,
                                        colorscale=colorscale,  # 'Viridis',
-                                       colorbar=dict(
-                                           thickness=15,
-                                           title='Residue',
-                                           xanchor='left',
-                                           titleside='right',
-                                           x=offsetbar[0]
-                                       ),
+                                       #colorbar=dict(
+                                       #    thickness=15,
+                                       #    title='Residue',
+                                       #    xanchor='left',
+                                       #    titleside='right',
+                                       #    x=offsetbar[0]
+                                       #),
                                        line=Line(
                                            color='rgb(50,50,50)', width=0.5)
                                        ),
@@ -93,7 +93,7 @@ def visualize_graph_layer(G, fig, color, weight=[], text=[], name="", offset = [
     offsetbar[0] += 0.02
 
     if not edge:
-        return
+        return 0,0,0
 
     edge_size = len(G.edges())
     edge_x = [0, 0, None]*edge_size
@@ -119,6 +119,7 @@ def visualize_graph_layer(G, fig, color, weight=[], text=[], name="", offset = [
                        hoverinfo='none'
                        )
     fig.add_trace(edge_trace)
+    return node_x[0], node_y[0], node_z[0]
 
 def visualize_graph_interlayer(G, fig, color, name="", offsetZ = 0):
     edge_size = len(G.edges())
@@ -158,51 +159,66 @@ def genHoverTextT(G, ids, final, cost=False):
         texts[i] += "R_moy: " + str(final.iloc[i].Residue) + "<br>"
         texts[i] += "R_med: " + str(final.iloc[i].ResidueMedian) + "<br>"
         texts[i] += "R_score: " + str(final.iloc[i].Score) + "<br>"
+        if 'Accumulated' in final:
+            texts[i] += "Acc: " + str(final.iloc[i].Accumulated) + "<br>"
 
     return texts
 
-def genHoverText(G, ids, final):
+def genHoverText(G, ids, final, positions):
     labels = get_node_labels(G)
     nodesize = len(G.nodes())
     texts = [''] * nodesize
-    for i in range(nodesize):
+
+    for i, node in enumerate(G.nodes()):
         texts[i] += "Name: "+ G.nodes()[i] + "<br>"
-        texts[i] += "D: " + str(labels[i])
+        texts[i] += "D: " + str(labels[i]) + "<br>"
+        texts[i] += "Pos: " + str(positions[node])
     return texts
 
-def visualize_graph_3d(G, ids, final, filename, title="3d", cost=False):
+def visualize_graph_3d(G, ids, final, filename, camera, title="3d", zoom=1., cost=False):
     Gt = G.get_subgraph("triplets")
     Gv = G.get_subgraph("views")
     Ge = G.get_subgraph("triplets_views")
+    Gtree = G.get_subgraph("triplets_tree")
 
     fig = go.Figure()
     if cost:
         weight = final["ResidueMedian"]
     else:
         weight = final["Residue"]
+
     weight = final["Score"]
     #weight += [1]*len(weight)
     #weight = np.log10(weight)
+
+    positions = get_node_pos(G)
 
     visualize_graph_layer(Gt, fig, weight=weight,
                           text=genHoverTextT(Gt, ids, final, cost),
                           color=f'rgb(0, 255, 0)', colorscale="Viridis", name="triplets",
                           size=3,
-                          offset=[0, 0, 0], symbol="square", edge=False)
+                          offset=[0, 0, 0], symbol="square", scale=[zoom,
+                                                                    zoom,
+                                                                    zoom], edge=False)
 
     labels = get_node_labels(Gv)
     w = []
     for i in range(len(labels)):
         w.append(int(labels[i]))
 
-    visualize_graph_layer(Gv, fig, weight=w,
-                          text=genHoverText(Gv, ids, final),
+    x, y, z = visualize_graph_layer(Gv, fig, weight=w,
+                          text=genHoverText(Gv, ids, final, positions),
                           color=f'rgb(255, 0, 0)', colorscale="inferno",
-                          symbol="circle",
-                          name="views")
+                                    symbol="circle",
+                                    scale=[zoom,
+                                           zoom,
+                                           zoom],
+                                    name="views")
 
     visualize_graph_interlayer(Ge, fig, color=f'rgb(0, 0, 255)',
                                name="inter")
+    visualize_graph_interlayer(Gtree, fig, color=f'rgb(70, 172, 194)',
+                               name="tree")
     mi = 9999999
     ma = -9999999
     for e in allpos.values():
@@ -223,7 +239,7 @@ def visualize_graph_3d(G, ids, final, filename, title="3d", cost=False):
                 )
 
     layout = Layout(
-        title=title,
+        #title=title,
 #        width=1000,
 #        height=1000,
         showlegend=True,
@@ -233,8 +249,16 @@ def visualize_graph_3d(G, ids, final, filename, title="3d", cost=False):
             zaxis=ZAxis(axis),
             aspectratio=dict(x=1, y=1, z=1)
         ),
+        #scene_camera=dict(
+        #    center=dict(x=x, y=y, z=z),
+        #    projection=dict(type='orthographic')),
+        scene_camera=camera,
         margin=Margin(
-            t=10
+            l=2, r=2, t=2, b=2
+        ),
+        legend=dict(
+            borderwidth= 0,
+            entrywidth=0,
         ),
         hovermode='closest',
         annotations=Annotations([
@@ -244,13 +268,17 @@ def visualize_graph_3d(G, ids, final, filename, title="3d", cost=False):
                 xref='paper',
                 yref='paper',
                 x=0,
-                y=10,
+                #y=10,
                 xanchor='left',
                 yanchor='bottom',
             )
         ]), )
+    import plotly.io as pio
+    pio.kaleido.scope.default_format = "svg"
 
     fig.update_layout(layout)
     offpy(fig, filename=filename, auto_open=True, show_link=True)
+    fig.write_image(filename + ".svg", scale=3, format="svg")
+
 
 
