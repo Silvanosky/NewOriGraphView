@@ -31,16 +31,25 @@ testDir = sys.argv[2]
 path = Path(refDir)
 workingDir = path.parent.absolute()
 print(workingDir)
+
+def find_extension(r):
+    files = glob.glob(r + "/Orientation-*.xml")
+    extension = files[0].split('.')[-2]
+    print("Images extensions: " + extension)
+    return extension
+
+
+image_extension = find_extension(refDir)
+
 # Morito utiliser que 3 images au lieu de toutes les images
 def f(t):
     start = time.time()
     micmacBascule(workingDir, refDir, t)
-    center, angles = micmacCmp(workingDir, refDir, t)
+    center, angles = micmacCmp(workingDir, image_extension, refDir, t)
     end = time.time()
     #print("Center : " + str(center) + " Angle : " + str(angles) \
     #        + " in " + str(end - start))
     return center, angles
-
 
 print(testDir)
 if testDir.find('*') != -1:
@@ -78,7 +87,7 @@ if testDir.find('*') != -1:
     csv_log.close()
 else:
     micmacBascule(workingDir, refDir, testDir)
-    micmacCmp(workingDir, refDir, testDir)
+    micmacCmp(workingDir, image_extension, refDir, testDir)
 
 
 #basculeDir = workingDir / "Ori-TMPBascule"

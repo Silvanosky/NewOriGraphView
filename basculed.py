@@ -29,10 +29,10 @@ def micmacBascule(wDir, rDir, tDir, Debug=False):
     #print(stdout.decode('utf-8'))
     os.chdir(cwd)
 
-def micmacCmp(wDir, rDir, tDir):
+def micmacCmp(wDir, image_extension, rDir, tDir):
     cwd = os.getcwd()
     os.chdir(wDir)
-    cmd_cmpori = ["mm3d", "CmpOri", ".*.tif", os.path.split(rDir)[1], \
+    cmd_cmpori = ["mm3d", "CmpOri", ".*." + image_extension, os.path.split(rDir)[1], \
             os.path.split(tDir)[1] + "Basculed", "CSV=diff.csv"]
     print(cmd_cmpori)
     ex_cmpori = subprocess.Popen(cmd_cmpori, stdout=subprocess.PIPE, \
