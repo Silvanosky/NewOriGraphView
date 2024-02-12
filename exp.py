@@ -28,12 +28,13 @@ print(workingDir)
 from basculed import *
 
 
-def exp(it, r0, pond, i):
+def exp(it, r0, pond, opti, i):
     return ["mm3d", "TestLib", "NO_SolInit_RndForest", ".*.tif",
-            "OriCalib=CalibPerf", "SH=5Pts", "OriOut=BestInit" + str(i), "Nb=" + str(it), "R0=" + str(r0), "Pond=" + str(pond)]
+            "OriCalib=CalibPerf", "SH=5Pts", "OriOut=BestInit" + str(i), "Nb=" +
+            str(it), "R0=" + str(r0), "Pond=" + str(pond), "Opti=" + str(opti)]
 
 def exec_(params, i):
-    cmd = exp(params[0], params[1], params[2], i)
+    cmd = exp(params[0], params[1], params[2], params[3], i)
     #print(cmd)
     log = open("/dev/null", "w")
     process = subprocess.Popen(cmd, stdout=log, stderr=log)
@@ -84,7 +85,7 @@ def experiences(cmds, i = 0):
     for c in range(len(cmds)):
         results_center = []
         results_angles = []
-        with Pool(processes=10) as pool:
+        with Pool(processes=40) as pool:
             multiple_results = [pool.apply_async(f, (cmds[c], j)) for j in range(i)]
             for res in multiple_results:
                 center1, angles1, center2, angles2, elapsedtime = res.get(timeout=10000)
@@ -111,8 +112,8 @@ def experiences(cmds, i = 0):
 
 listes_exp = []
 for n in range(100, 5001, 100):
-    listes_exp.append([n, 10, 1])
-    listes_exp.append([n, 10, 0])
+    listes_exp.append([n, 10, 1, 0])
+    listes_exp.append([n, 10, 0, 0])
 print(listes_exp)
 
 experiences(listes_exp, 10)
