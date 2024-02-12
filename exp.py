@@ -77,6 +77,7 @@ def experiences(cmds, i = 0):
                     writer.writerow({'N': cmds[c][0], 'R0': cmds[c][1], 'Pond':
                                  cmds[c][2], 'DistCenter': center, 'DistAngle':
                                      angles, 'Time': elapsedtime})
+                    csvfile.flush()
                 results_center.append(center)
                 results_angles.append(angles)
 
