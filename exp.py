@@ -52,14 +52,15 @@ def f(cmd, j):
     p.communicate()
     center, angles = verif(j)
     end = time.time()
+    elapsedtime = end - start
     print("Center : " + str(center) + " Angle : " + str(angles) \
-            + " on " + str(j) + " in " + str(end - start))
-    return center, angles
+            + " on " + str(j) + " in " + str(elapsedtime))
+    return center, angles, elapsedtime
 
 def experiences(cmds, i = 0):
     print("Number of tests to try: " + str(len(cmds)) + " N times: " + str(i))
     csvfile = open('results.csv', 'w', newline='')
-    fieldnames = ['N', 'R0', 'Pond', 'DistCenter', 'DistAngle']
+    fieldnames = ['N', 'R0', 'Pond', 'DistCenter', 'DistAngle', 'Time']
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
     writer.writeheader()
     csv_writer_lock = threading.Lock()
@@ -71,11 +72,11 @@ def experiences(cmds, i = 0):
         with Pool(processes=10) as pool:
             multiple_results = [pool.apply_async(f, (cmds[c], j)) for j in range(i)]
             for res in multiple_results:
-                center, angles = res.get(timeout=10000)
+                center, angles, elapsedtime = res.get(timeout=10000)
                 with csv_writer_lock:
                     writer.writerow({'N': cmds[c][0], 'R0': cmds[c][1], 'Pond':
                                  cmds[c][2], 'DistCenter': center, 'DistAngle':
-                                 angles})
+                                     angles, 'Time': elapsedtime})
                 results_center.append(center)
                 results_angles.append(angles)
 
