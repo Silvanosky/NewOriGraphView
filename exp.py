@@ -1,9 +1,8 @@
 #!/bin/python
 
 import sys, os
-import lxml.objectify
 import xml.etree.ElementTree as ET
-from lxml import etree
+import lxml.objectify
 import glob
 import numpy as np
 from pathlib import Path
@@ -15,6 +14,8 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from multiprocessing import Process
 from multiprocessing import Pool, TimeoutError
+import csv
+import threading
 
 nArg = len(sys.argv)
 refDir = sys.argv[1]
@@ -24,55 +25,14 @@ path = Path(refDir)
 workingDir = path.parent.absolute()
 print(workingDir)
 
-def micmacBascule(wDir, rDir, tDir, Debug=False):
-    cwd = os.getcwd()
-    os.chdir(wDir)
-    cmd_morito = ["mm3d", "Morito", os.path.split(rDir)[1]
-                  +"/Orientation-.*.xml", "" + \
-            os.path.split(tDir)[1] + "/Orientation-.*.xml", \
-                  os.path.split(tDir)[1].removeprefix("Ori-") + "Basculed"]
-    #print(cmd_morito)
-
-    ex = subprocess.Popen(cmd_morito, stdout=subprocess.PIPE, \
-                                 stderr=subprocess.PIPE)
-    stdout, stderr = ex.communicate()
-    if Debug:
-        print(stdout)
-    #print(stdout.decode('utf-8'))
-    os.chdir(cwd)
-
-def micmacCmp(wDir, rDir, tDir):
-    cwd = os.getcwd()
-    os.chdir(wDir)
-    cmd_cmpori = ["mm3d", "CmpOri", ".*.tif", os.path.split(rDir)[1], \
-                  os.path.split(tDir)[1] + "Basculed"]
-    ex_cmpori = subprocess.Popen(cmd_cmpori, stdout=subprocess.PIPE, \
-                                 stderr=subprocess.PIPE)
-    stdout, stderr = ex_cmpori.communicate()
-    p = compile("Aver;  DistCenter= {} DistMatrix= {} DistMatrixAng= not calculated")
-    output = stdout.decode('utf-8')
-    #print (output.splitlines()[-1])
-    parsed = p.parse(output.splitlines()[-1])
-    print("Center Distance : " + parsed[0] + " Angle Distance : " + parsed[1])
-    os.chdir(cwd)
-    return (float(parsed[0]), float(parsed[1]))
+from basculed import *
 
 
 def exp(it, r0, pond, i):
-    cmd = []
-    cmd.append("mm3d")
-    cmd.append("TestLib")
-    cmd.append("NO_SolInit_RndForest")
-    cmd.append(".*.tif")
-    cmd.append("OriCalib=CalibPerf")
-    cmd.append("OriOut=BestInit" + str(i))
-    cmd.append("SH=5Pts")
-    cmd.append("Nb=" + str(it))
-    cmd.append("R0=" + str(r0))
-    cmd.append("Pond=" + str(pond))
-    return cmd
+    return ["mm3d", "TestLib", "NO_SolInit_RndForest", ".*.tif",
+            "OriCalib=CalibPerf", "SH=5Pts", "OriOut=BestInit" + str(i), "Nb=" + str(it), "R0=" + str(r0), "Pond=" + str(pond)]
 
-def exec(params, i):
+def exec_(params, i):
     cmd = exp(params[0], params[1], params[2], i)
     #print(cmd)
     log = open("/dev/null", "w")
@@ -84,13 +44,11 @@ def exec(params, i):
 
 def verif(i):
     micmacBascule(workingDir, refDir, "Ori-BestInit"+str(i)+"0")
-    return micmacCmp(workingDir, refDir, "Ori-BestInit"+str(i)+"0")
-
-
+    return micmacCmp(workingDir, "tif", refDir, "Ori-BestInit"+str(i)+"0")
 
 def f(cmd, j):
     start = time.time()
-    p = exec(cmd, j)
+    p = exec_(cmd, j)
     p.communicate()
     center, angles = verif(j)
     end = time.time()
@@ -98,13 +56,14 @@ def f(cmd, j):
             + " on " + str(j) + " in " + str(end - start))
     return center, angles
 
-listes_exp = [ \
-                [ 500, 10, 1], \
-                [ 500, 10, 0], \
-            ]
-
 def experiences(cmds, i = 0):
     print("Number of tests to try: " + str(len(cmds)) + " N times: " + str(i))
+    csvfile = open('results.csv', 'w', newline='')
+    fieldnames = ['N', 'R0', 'Pond', 'DistCenter', 'DistAngle']
+    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    writer.writeheader()
+    csv_writer_lock = threading.Lock()
+
     processes = []
     for c in range(len(cmds)):
         results_center = []
@@ -113,6 +72,10 @@ def experiences(cmds, i = 0):
             multiple_results = [pool.apply_async(f, (cmds[c], j)) for j in range(i)]
             for res in multiple_results:
                 center, angles = res.get(timeout=10000)
+                with csv_writer_lock:
+                    writer.writerow({'N': cmds[c][0], 'R0': cmds[c][1], 'Pond':
+                                 cmds[c][2], 'DistCenter': center, 'DistAngle':
+                                 angles})
                 results_center.append(center)
                 results_angles.append(angles)
 
@@ -127,4 +90,11 @@ def experiences(cmds, i = 0):
         print(str(np.mean(results_angles)) + " - " + str(np.std(results_angles)) + " - " + str(np.var(results_angles)))
         print("-------------------------------")
 
-experiences(listes_exp, 50)
+
+listes_exp = []
+for n in range(100, 5001, 100):
+    listes_exp.append([n, 10, 1])
+    listes_exp.append([n, 10, 0])
+print(listes_exp)
+
+experiences(listes_exp, 10)
