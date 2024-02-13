@@ -35,7 +35,8 @@ def exp(it, r0, pond, opti, i):
 
 def exec_(params, i):
     cmd = exp(params[0], params[1], params[2], params[3], i)
-    #print(cmd)
+
+    print(cmd)
     log = open("/dev/null", "w")
     process = subprocess.Popen(cmd, stdout=log, stderr=log)
     #stdout, stderr = process.communicate()
@@ -85,7 +86,7 @@ def experiences(cmds, i = 0):
     for c in range(len(cmds)):
         results_center = []
         results_angles = []
-        with Pool(processes=40) as pool:
+        with Pool(processes=10) as pool:
             multiple_results = [pool.apply_async(f, (cmds[c], j)) for j in range(i)]
             for res in multiple_results:
                 center1, angles1, center2, angles2, elapsedtime = res.get(timeout=10000)
@@ -111,9 +112,8 @@ def experiences(cmds, i = 0):
 
 
 listes_exp = []
-for n in range(100, 5001, 100):
-    listes_exp.append([n, 10, 1, 0])
-    listes_exp.append([n, 10, 0, 0])
+for n in np.arange(0.1, 2, 0.1):
+    listes_exp.append([500, n, 1, 0])
 print(listes_exp)
 
 experiences(listes_exp, 10)
